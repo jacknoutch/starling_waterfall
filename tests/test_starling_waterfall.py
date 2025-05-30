@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
-from starling_waterfall import StarlingAPI
+from starling_waterfall import *
 
 
 class TestStarlingAPI(unittest.TestCase):
@@ -139,4 +139,40 @@ class TestStarlingAPI(unittest.TestCase):
 
         self.assertDictEqual(self.recurring_transfer, recurring_transfer)
 
+    
+    @patch("starling_waterfall.requests.put")
+    def test_put_recurring_transfer(self, mock_put):
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = self.recurring_transfer
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        data = self.recurring_transfer
+        data["recurrenceRule"]["startDate"] = "2025-07-01"
+
+        recurring_transfer = self.api.set_recurring_transfer(self.savings_goal_id, data)
+
+        self.assertDictEqual(self.recurring_transfer, recurring_transfer)
+
+
+class TestAmount(unittest.TestCase):
+
+    def setUp(self):
+
+        self.amount_dict = {
+            "minorUnits": 1000,
+            "currency": "GBP"
+        }
+
+
+    def test_to_dict(self):
+
+        amount = Amount(1000)
+        amount_dict = amount.to_dict()
+
+        self.assertDictEqual(amount_dict, self.amount_dict)
+
+# TODO: test RecurrenceRule
+# TODO: test RecurringTransfer
     

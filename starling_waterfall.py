@@ -59,6 +59,68 @@ class StarlingAPI:
         except requests.exceptions.RequestException as error:
             print(error)
             return error
+        
+
+    def set_recurring_transfer(self, savings_goal_id, data):
+
+        url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/recurring-transfer"
+
+        try:
+            response = requests.put(url, headers=self.headers, data=data)
+            response.raise_for_status()
+            recurring_transfer = response.json()
+            return recurring_transfer
+        
+        except requests.exceptions.RequestException as error:
+            print(error)
+            return error
+
+
+class RecurrenceRule:
+
+    def __init__(self, start_date: str):
+        self.start_date = start_date
+        self.frequency = "MONTHLY"
+
+    def to_dict(self):
+        return {
+            "startDate": self.start_date,
+            "frequency": self.frequency,
+        }
+    
+
+class Amount:
+
+    def __init__(self, minorUnits: int, currency: str ="GBP"):
+        self.currency = currency
+        self.minorUnits = minorUnits
+
+    def to_dict(self):
+        return {
+            "currency": self.currency,
+            "minorUnits": self.minorUnits
+        }
+
+
+class RecurringTransfer:
+
+    def __init__(self, transfer_uid: str, recurrence_rule: RecurrenceRule, amount: Amount, top_up: bool):
+        self.transfer_uid = transfer_uid
+        self.recurrence_rule = recurrence_rule
+        self.amount = amount
+        self.top_up = top_up
+    
+    def to_dict(self):
+        return {
+            "transfer_uid": self.transfer_uid,
+            "recurrenceRule": self.recurrence_rule.to_dict(),
+            "amount": self.amount.to_dict(),
+            "topUp": self.top_up
+        }
+    
+    def to_json(self):
+        return json.dumps(self.to_dict())
+    
 
 
 # load_dotenv()
@@ -70,4 +132,27 @@ class StarlingAPI:
 # savings_goals = api.get_savings_goals()
 
 # for goal in savings_goals:
-#     print(api.get_recurring_transfer(goal.get("savingsGoalUid")))
+
+#     goal_id = goal.get("savingsGoalUid")
+    
+#     try:
+#         recurring_transfer = api.get_recurring_transfer(goal_id)
+#         recurrenceRule = recurring_transfer.get("recurrenceRule")
+#         recurrenceRule["startDate"] = "2025-07-01"
+#         # print(recurring_transfer)
+
+#         data = {
+#             "recurrenceRule": recurrenceRule,
+#             "amount": recurring_transfer.get("currencyAndAmount"),
+#             "topUp": recurring_transfer.get("topUp"),
+#         }
+
+#         data = json.dumps(data)
+
+        print(data)
+        new_recurring_transfer = api.set_recurring_transfer(goal_id, data)
+        print(new_recurring_transfer)
+
+    except AttributeError as error:
+        print(error)
+    
