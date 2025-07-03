@@ -122,6 +122,33 @@ class RecurringTransfer:
         return json.dumps(self.to_dict())
     
 
+class Application:
+
+    def __init__(self, api_token, account_uid):
+        self.api = StarlingAPI(api_token, account_uid)
+
+    def run(self):
+        balance = self.api.get_balance()
+        print(f"Balance: {balance}")
+
+        savings_goals = self.api.get_savings_goals()
+        print(f"Savings Goals: {savings_goals}")
+
+        for goal in savings_goals:
+            goal_id = goal.get("savingsGoalUid")
+            try:
+                recurring_transfer = self.api.get_recurring_transfer(goal_id)
+                print(f"Recurring Transfer for {goal_id}: {recurring_transfer}")
+            except Exception as e:
+                print(f"Error fetching recurring transfer for {goal_id}: {e}")
+
+
+if __name__ == "__main__":
+    load_dotenv()
+    api_token = os.getenv("ACCESS_TOKEN")
+    account_uid = os.getenv("ACCOUNT_UID")
+    app = Application(api_token, account_uid)
+    app.run()
 
 # load_dotenv()
 # api = StarlingAPI(
@@ -149,10 +176,10 @@ class RecurringTransfer:
 
 #         data = json.dumps(data)
 
-        print(data)
-        new_recurring_transfer = api.set_recurring_transfer(goal_id, data)
-        print(new_recurring_transfer)
+    #     print(data)
+    #     new_recurring_transfer = api.set_recurring_transfer(goal_id, data)
+    #     print(new_recurring_transfer)
 
-    except AttributeError as error:
-        print(error)
+    # except AttributeError as error:
+    #     print(error)
     
