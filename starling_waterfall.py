@@ -129,19 +129,14 @@ class Application:
 
     def run(self):
         balance = self.api.get_balance()
-        print(f"Balance: {balance}")
+        print(f"Balance: {' ' * 21} £ {balance / 100:>10}")
 
         savings_goals = self.api.get_savings_goals()
-        print(f"Savings Goals: {savings_goals}")
 
         for goal in savings_goals:
-            goal_id = goal.get("savingsGoalUid")
-            try:
-                recurring_transfer = self.api.get_recurring_transfer(goal_id)
-                print(f"Recurring Transfer for {goal_id}: {recurring_transfer}")
-            except Exception as e:
-                print(f"Error fetching recurring transfer for {goal_id}: {e}")
-
+            name = goal.get("name", "Unnamed Goal")
+            balance = goal.get("totalSaved").get("minorUnits")
+            print(f"{name:<30} £ {balance / 100:>10.2f}")
 
 if __name__ == "__main__":
     load_dotenv()
