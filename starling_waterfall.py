@@ -128,15 +128,30 @@ class Application:
         self.api = StarlingAPI(api_token, account_uid)
 
     def run(self):
-        balance = self.api.get_balance()
-        print(f"Balance: {' ' * 21} £ {balance / 100:>10}")
+        self.print_balance()
 
+        self.print_savings_goals()
+        
+
+    def print_balance(self):
+        balance = self.api.get_balance()
+        print(f"{'Main balance:':<30} £ {balance / 100:>10}")
+
+
+    def print_savings_goals(self):
         savings_goals = self.api.get_savings_goals()
+        print(f"{'Savings Goals':<30}   {'Balance':>10}")
+        print("-" * 43)
+
+        if not savings_goals:
+            print("No savings goals found.")
+            return
 
         for goal in savings_goals:
             name = goal.get("name", "Unnamed Goal")
             balance = goal.get("totalSaved").get("minorUnits")
             print(f"{name:<30} £ {balance / 100:>10.2f}")
+
 
 if __name__ == "__main__":
     load_dotenv()
