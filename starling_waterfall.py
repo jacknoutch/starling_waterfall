@@ -113,8 +113,6 @@ class Application():
         self.refresh_spaces()  # Load savings goals on initialization
 
 
-
-
     def run(self):
         self.print_balance()
 
@@ -123,6 +121,49 @@ class Application():
         self.print_recurring_transfers()
 
         self.print_waterfall_total()
+
+        user_input = input("Would you like to proceed with the waterfall process? (y/n): ").strip().lower()
+
+        if user_input == "y":
+            self.execute_waterfall()
+        else:
+            print("Waterfall process aborted.")
+
+
+    def execute_waterfall(self):
+        """
+        Executes the waterfall process by distributing the respective amount to each savings goal according to its
+        recurring transfer settings and putting back the date of the next transfer to the first of the next month.
+        """
+        self.spaces = self._refresh_spaces_if_needed()
+
+        if not self.spaces:
+            print("No savings goals found.")
+            return
+
+        total_recurring = self.calculate_waterfall_total()
+
+        if total_recurring == 0:
+            print("No recurring payments found. Nothing to distribute.")
+            return
+
+        # Make sure there is a balance to distribute
+        if self.balance.minorUnits < total_recurring:
+            print(f"Insufficient balance to distribute. Available: £ {self.balance.minorUnits / 100:.2f}, Required: £ {total_recurring / 100:.2f}")
+            return
+
+        print("Starting waterfall process...")
+
+        for space in self.spaces:
+            if space.recurringTransfer:
+                transfer_amount = space.recurringTransfer.currencyAndAmount.minorUnits
+                if transfer_amount > 0:
+                    print(f"Distributing £ {transfer_amount / 100:.2f} to {space.name}")
+                    self.api.set_recurring_transfer(space.savingsGoalUid, space.recurringTransfer.model_dump())
+                else:
+                    print(f"No recurring transfer set for {space.name}")
+
+        print("Waterfall process completed.")
 
 
     def calculate_waterfall_total(self):
@@ -230,7 +271,7 @@ class Application():
             return
         
         print("=" * 53)
-        print(f"{'Savings Goals':<40}   {'Next Payment':>13}")
+        print(f"{'Savings Goals':<29}{'Next Date'}{'Amount':>15}")
         print("-" * 53)
 
         for goal in self.spaces:
