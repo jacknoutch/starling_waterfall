@@ -3,6 +3,7 @@ import os
 import json, requests
 from dotenv import load_dotenv
 from functools import wraps
+from pydantic import BaseModel
 
 
 def api_request(method):
@@ -104,56 +105,28 @@ class StarlingAPI:
         return url, json.dumps(data)
 
 
-class RecurrenceRule:
-
-    def __init__(self, start_date: str):
-        self.start_date = start_date
-        self.frequency = "MONTHLY"
-
-    def to_dict(self):
-        return {
-            "startDate": self.start_date,
-            "frequency": self.frequency,
-        }
-    
-
-class Amount:
-
-    def __init__(self, minorUnits: int, currency: str ="GBP"):
-        self.currency = currency
-        self.minorUnits = minorUnits
-
-    def to_dict(self):
-        return {
-            "currency": self.currency,
-            "minorUnits": self.minorUnits
-        }
+class RecurrenceRule(BaseModel):
+    start_date: str
+    frequency: str = "MONTHLY"
 
 
-class RecurringTransfer:
+class Amount(BaseModel):
+    currency: str = "GBP"
+    minor_units: int
 
-    def __init__(self, transfer_uid: str, recurrence_rule: RecurrenceRule, amount: Amount, top_up: bool):
-        self.transfer_uid = transfer_uid
-        self.recurrence_rule = recurrence_rule
-        self.amount = amount
-        self.top_up = top_up
-    
-    def to_dict(self):
-        return {
-            "transfer_uid": self.transfer_uid,
-            "recurrenceRule": self.recurrence_rule.to_dict(),
-            "amount": self.amount.to_dict(),
-            "topUp": self.top_up
-        }
-    
-    def to_json(self):
-        return json.dumps(self.to_dict())
-    
 
-class Application:
+class RecurringTransfer(BaseModel):
+    transfer_uid: str
+    recurrence_rule: RecurrenceRule
+    amount: Amount
+    top_up: bool    
+
+
+class Application():
 
     def __init__(self, api_token, account_uid):
         self.api = StarlingAPI(api_token, account_uid)
+        
 
     def run(self):
         self.print_balance()
