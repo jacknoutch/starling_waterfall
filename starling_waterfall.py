@@ -2,6 +2,7 @@ import os
 
 import json, requests
 from dotenv import load_dotenv
+from functools import wraps
 
 
 def api_request(method):
@@ -24,21 +25,21 @@ def api_request(method):
 
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            
+
             url, data = func(self, *args, **kwargs)
-            
+
             try:
-                response = requests.request(method, headers=self.headers, data=data)
+                response = requests.request(method, url, headers=self.headers, data=data)
                 response.raise_for_status()
                 return response.json()
-
+            
             except requests.exceptions.RequestException as error:
                 print(f"API request failed: {error}")
                 return None
-
-            return wrapper
-
-        return decorator
+            
+        return wrapper
+    
+    return decorator
 
 
 class StarlingAPI:
@@ -61,55 +62,46 @@ class StarlingAPI:
         return url, None
 
     
-    def get_balance(self)
+    def get_balance(self):
         data = self._get_balance_data()
         if data:
             return data.get("effectiveBalance").get("minorUnits")
         return None
         
 
-    def get_savings_goals(self):
+    @api_request('GET')
+    def _get_savings_goals_data(self):
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals"
+        return url, None
+    
 
-        try:
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            savings_goals = response.json().get("savingsGoalList")
-            return savings_goals
-
-        except requests.exceptions.RequestException as error:
-            print(error)
-            return None
+    def get_savings_goals(self):
+        data = self._get_savings_goals_data()
+        if data:
+            return data.get("savingsGoalList")
+        return None
 
 
+    @api_request('GET')
     def get_recurring_transfer(self, savings_goal_id):
-        
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/recurring-transfer"
-
-        try:
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            recurring_transfer = response.json()
-            return recurring_transfer
-
-        except requests.exceptions.RequestException as error:
-            print(error)
-            return error
+        return url, None
         
 
+    @api_request('PUT')
     def set_recurring_transfer(self, savings_goal_id, data):
+        """
+        Sets a recurring transfer for a specified savings goal.
 
+        Args:
+            savings_goal_id (str): The ID of the savings goal.
+            data (dict): The data for the recurring transfer.
+
+        Returns:
+            dict: The response from the API containing the updated recurring transfer details.
+        """
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/recurring-transfer"
-
-        try:
-            response = requests.put(url, headers=self.headers, data=data)
-            response.raise_for_status()
-            recurring_transfer = response.json()
-            return recurring_transfer
-        
-        except requests.exceptions.RequestException as error:
-            print(error)
-            return error
+        return url, json.dumps(data)
 
 
 class RecurrenceRule:
@@ -167,6 +159,8 @@ class Application:
         self.print_balance()
 
         self.print_savings_goals()
+
+        self.print_recurring_transfers()
         
 
     def print_balance(self):
@@ -187,6 +181,36 @@ class Application:
             name = goal.get("name", "Unnamed Goal")
             balance = goal.get("totalSaved").get("minorUnits")
             print(f"{name:<30} £ {balance / 100:>10.2f}")
+
+
+
+    def print_recurring_transfer(self, transfer_json):
+        name = transfer_json.get("name", transfer_json["transferUid"])
+        amount = transfer_json.get("currencyAndAmount").get("minorUnits")
+        next_payment_date = transfer_json.get("nextPaymentDate")
+        print(f"{name:<16} - {next_payment_date} - £ {amount / 100:>10.02f}")
+
+
+
+    def print_recurring_transfers(self):
+
+        savings_goals = self.api.get_savings_goals()
+
+        if not savings_goals:
+            print("No savings goals found.")
+            return
+        
+        for goal in savings_goals:
+            goal_id = goal.get("savingsGoalUid")
+            
+            try:
+                recurring_transfer = self.api.get_recurring_transfer(goal_id)
+                self.print_recurring_transfer(recurring_transfer)
+            
+            except Exception as e:
+                # print(e)
+                pass
+
 
 
 if __name__ == "__main__":
