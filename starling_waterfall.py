@@ -1,6 +1,6 @@
 import os
 
-import json, requests
+import json, requests, time
 from dotenv import load_dotenv
 from functools import wraps
 from pydantic import BaseModel
@@ -109,7 +109,7 @@ class StarlingAPI:
 
 
 class RecurrenceRule(BaseModel):
-    start_date: str
+    startDate: str
     frequency: str = "MONTHLY"
 
 
@@ -119,10 +119,12 @@ class Amount(BaseModel):
 
 
 class RecurringTransfer(BaseModel):
-    transfer_uid: str
-    recurrence_rule: RecurrenceRule
-    amount: Amount
-    top_up: bool
+    description: Optional[str] = None
+    transferUid: str
+    recurrenceRule: RecurrenceRule
+    currencyAndAmount: Amount
+    # top_up: bool
+    reference: Optional[str] = None
 
 
 class SavingsSpace(BaseModel):
@@ -134,6 +136,7 @@ class SavingsSpace(BaseModel):
     # target_date: str = None
     # recurring_transfer: RecurringTransfer = None
     state: str
+    recurringTransfer: Optional[RecurringTransfer] = None
 
 
 class Application():
@@ -153,7 +156,7 @@ class Application():
 
         self.print_savings_goals()
 
-        # self.print_recurring_transfers()
+        self.print_recurring_transfers()
 
 
     def refresh_spaces(self):
@@ -166,6 +169,15 @@ class Application():
             totalSaved = Amount.model_validate(goal.get("totalSaved"))
             goal["totalSaved"] = totalSaved
             savings_space = SavingsSpace.model_validate(goal)
+            
+            recurring_transfer = self.api.get_recurring_transfer(savings_space.savingsGoalUid)
+            if recurring_transfer:
+                recurrence_rule = RecurrenceRule.model_validate(recurring_transfer.get("recurrenceRule"))
+                currency_and_amount = Amount.model_validate(recurring_transfer.get("currencyAndAmount"))
+                recurring_transfer["recurrenceRule"] = recurrence_rule
+                recurring_transfer["currencyAndAmount"] = currency_and_amount
+                savings_space.recurringTransfer = RecurringTransfer.model_validate(recurring_transfer)
+            
             self.spaces.append(savings_space)
 
         return self.spaces
@@ -230,17 +242,19 @@ class Application():
             print("No savings goals found.")
             return
         
-        for goal in savings_goals:
-            goal_id = goal.get("savingsGoalUid")
-            
-            try:
-                recurring_transfer = self.api.get_recurring_transfer(goal_id)
-                self.print_recurring_transfer(recurring_transfer)
-            
-            except Exception as e:
-                # print(e)
-                pass
+        print("=" * 43)
+        print(f"{'Savings Goals':<30}   {'Next Payment':>13}")
+        print("-" * 43)
 
+        for goal in self.spaces:
+            if goal.recurringTransfer:
+                next_payment_date = goal.recurringTransfer.recurrenceRule.startDate
+                print(f"{goal.name:<30}   {next_payment_date:>10}")
+            else:
+                print(f"{goal.name:<30}   {'No recurring transfer':>10}")
+
+        print("=" * 43)
+        print()
 
 
 if __name__ == "__main__":
