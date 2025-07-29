@@ -6,6 +6,8 @@ from functools import wraps
 from pydantic import BaseModel
 from typing import Optional
 
+from utils import *
+
 
 def api_request(method):
     """
@@ -171,11 +173,10 @@ class Application():
             savings_space = SavingsSpace.model_validate(goal)
             
             recurring_transfer = self.api.get_recurring_transfer(savings_space.savingsGoalUid)
+            
             if recurring_transfer:
-                recurrence_rule = RecurrenceRule.model_validate(recurring_transfer.get("recurrenceRule"))
-                currency_and_amount = Amount.model_validate(recurring_transfer.get("currencyAndAmount"))
-                recurring_transfer["recurrenceRule"] = recurrence_rule
-                recurring_transfer["currencyAndAmount"] = currency_and_amount
+                transform_childs_class(recurring_transfer, "recurrenceRule", RecurrenceRule)
+                transform_childs_class(recurring_transfer, "currencyAndAmount", Amount)
                 savings_space.recurringTransfer = RecurringTransfer.model_validate(recurring_transfer)
             
             self.spaces.append(savings_space)
