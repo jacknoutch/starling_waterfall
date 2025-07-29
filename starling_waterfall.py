@@ -4,6 +4,7 @@ import json, requests
 from dotenv import load_dotenv
 from functools import wraps
 from pydantic import BaseModel
+from typing import Optional
 
 
 def api_request(method):
@@ -44,7 +45,9 @@ def api_request(method):
 
 
 class StarlingAPI:
-    """Handles the interaction with Starling Bank's API"""
+    """
+    A class to interact with the Starling Bank API.
+    """
 
     BASE_URL = "https://api.starlingbank.com/api/v2"
 
@@ -112,49 +115,103 @@ class RecurrenceRule(BaseModel):
 
 class Amount(BaseModel):
     currency: str = "GBP"
-    minor_units: int
+    minorUnits: int
 
 
 class RecurringTransfer(BaseModel):
     transfer_uid: str
     recurrence_rule: RecurrenceRule
     amount: Amount
-    top_up: bool    
+    top_up: bool
+
+
+class SavingsSpace(BaseModel):
+    savingsGoalUid: str
+    name: str
+    target: Optional[Amount] = None
+    totalSaved: Amount
+    savedPercentage: Optional[int] = None
+    # target_date: str = None
+    # recurring_transfer: RecurringTransfer = None
+    state: str
 
 
 class Application():
 
     def __init__(self, api_token, account_uid):
         self.api = StarlingAPI(api_token, account_uid)
-        
+        self.balance = Amount.model_validate(self.api._get_balance_data()["effectiveBalance"])
+        self.spaces = []
+
+        self.refresh_spaces()  # Load savings goals on initialization
+
+
+
 
     def run(self):
         self.print_balance()
 
         self.print_savings_goals()
 
-        self.print_recurring_transfers()
-        
+        # self.print_recurring_transfers()
+
+
+    def refresh_spaces(self):
+        """
+        Refreshes the data for savings goals (spaces) from the API, returning them as a list of SavingsSpace objects.
+        """
+        savings_goals = self.api.get_savings_goals()
+
+        for goal in savings_goals:
+            totalSaved = Amount.model_validate(goal.get("totalSaved"))
+            goal["totalSaved"] = totalSaved
+            savings_space = SavingsSpace.model_validate(goal)
+            self.spaces.append(savings_space)
+
+        return self.spaces
+
+
+    def _refresh_spaces_if_needed(self):
+        """
+        Checks if the spaces list is empty and refreshes it if necessary.
+        """
+        if not self.spaces:
+            print("Refreshing savings goals...")
+            self.refresh_spaces()
+        return self.spaces
+
 
     def print_balance(self):
-        balance = self.api.get_balance()
-        print(f"{'Main balance:':<30} £ {balance / 100:>10}")
+        print("=" * 43)
+        print(f"{'Savings Goals':<30}   {'Balance':>10}")
+        print("-" * 43)
+        print(f"{'Main balance:':<30} £ {self.balance.minorUnits / 100:>10}")
+        print("=" * 43)
+        print()
 
 
     def print_savings_goals(self):
-        savings_goals = self.api.get_savings_goals()
-        print(f"{'Savings Goals':<30}   {'Balance':>10}")
-        print("-" * 43)
+        """
+        Prints the savings goals and their balances.
+        """
 
-        if not savings_goals:
+        self.spaces = self._refresh_spaces_if_needed()
+
+        if not self.spaces:
             print("No savings goals found.")
             return
 
-        for goal in savings_goals:
-            name = goal.get("name", "Unnamed Goal")
-            balance = goal.get("totalSaved").get("minorUnits")
+        print("=" * 43)
+        print(f"{'Savings Goals':<30}   {'Balance':>10}")
+        print("-" * 43)
+
+        for goal in self.spaces:
+            name = goal.name if goal.name else "Unnamed Goal"
+            balance = goal.totalSaved.minorUnits
             print(f"{name:<30} £ {balance / 100:>10.2f}")
 
+        print("=" * 43)
+        print()
 
 
     def print_recurring_transfer(self, transfer_json):
@@ -167,9 +224,9 @@ class Application():
 
     def print_recurring_transfers(self):
 
-        savings_goals = self.api.get_savings_goals()
+        self.spaces = self._refresh_spaces_if_needed()
 
-        if not savings_goals:
+        if not self.spaces:
             print("No savings goals found.")
             return
         
