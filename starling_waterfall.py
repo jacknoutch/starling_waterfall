@@ -292,37 +292,3 @@ if __name__ == "__main__":
     account_uid = os.getenv("ACCOUNT_UID")
     app = Application(api_token, account_uid)
     app.run()
-
-# load_dotenv()
-# api = StarlingAPI(
-#     os.environ.get("ACCESS_TOKEN"),
-#     os.environ.get("ACCOUNT_UID")
-#     )
-# print(api.get_balance())
-# savings_goals = api.get_savings_goals()
-
-# for goal in savings_goals:
-
-#     goal_id = goal.get("savingsGoalUid")
-    
-#     try:
-#         recurring_transfer = api.get_recurring_transfer(goal_id)
-#         recurrenceRule = recurring_transfer.get("recurrenceRule")
-#         recurrenceRule["startDate"] = "2025-07-01"
-#         # print(recurring_transfer)
-
-#         data = {
-#             "recurrenceRule": recurrenceRule,
-#             "amount": recurring_transfer.get("currencyAndAmount"),
-#             "topUp": recurring_transfer.get("topUp"),
-#         }
-
-#         data = json.dumps(data)
-
-    #     print(data)
-    #     new_recurring_transfer = api.set_recurring_transfer(goal_id, data)
-    #     print(new_recurring_transfer)
-
-    # except AttributeError as error:
-    #     print(error)
-    
