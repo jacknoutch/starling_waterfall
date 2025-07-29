@@ -4,6 +4,43 @@ import json, requests
 from dotenv import load_dotenv
 
 
+def api_request(method):
+    """
+    Decorator for methods to handle HTTP requests with standardized error handling.
+
+    Args:
+        method (str): The HTTP method to use for the request (e.g. 'GET', 'POST),
+
+    Returns:
+        function: A wrapper function that executes the decorated method to obtain the request
+            URL and data, performs the HTTP request, and returns the parsed JSON response
+            or None if an error occurs.
+
+    The decorated method should return a tuple (url, data), where 'data' may be None for methods
+    that do not send a request body.
+    """
+
+    def decorator(func):
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            
+            url, data = func(self, *args, **kwargs)
+            
+            try:
+                response = requests.request(method, headers=self.headers, data=data)
+                response.raise_for_status()
+                return response.json()
+
+            except requests.exceptions.RequestException as error:
+                print(f"API request failed: {error}")
+                return None
+
+            return wrapper
+
+        return decorator
+
+
 class StarlingAPI:
     """Handles the interaction with Starling Bank's API"""
 
@@ -18,20 +55,19 @@ class StarlingAPI:
         }
 
 
-    def get_balance(self):
+    @api_request('GET')
+    def _get_balance_data(self):
         url = f"{self.BASE_URL}/accounts/{self.account_uid}/balance"
+        return url, None
 
-        try:
-            response = requests.get(url, headers=self.headers)
-            response.raise_for_status()
-            effectiveBalance = response.json().get("effectiveBalance").get("minorUnits")
-            return effectiveBalance
-        
-        except requests.exceptions.RequestException as error:
-            print(error)
-            return None
-        
     
+    def get_balance(self)
+        data = self._get_balance_data()
+        if data:
+            return data.get("effectiveBalance").get("minorUnits")
+        return None
+        
+
     def get_savings_goals(self):
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals"
 
