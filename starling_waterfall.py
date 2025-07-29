@@ -1,49 +1,11 @@
-import os
-
-import json, requests, time
+# Standard library imports
+import json, os
 from dotenv import load_dotenv
-from functools import wraps
 from pydantic import BaseModel
 from typing import Optional
 
+# Local imports
 from utils import *
-
-
-def api_request(method):
-    """
-    Decorator for methods to handle HTTP requests with standardized error handling.
-
-    Args:
-        method (str): The HTTP method to use for the request (e.g. 'GET', 'POST),
-
-    Returns:
-        function: A wrapper function that executes the decorated method to obtain the request
-            URL and data, performs the HTTP request, and returns the parsed JSON response
-            or None if an error occurs.
-
-    The decorated method should return a tuple (url, data), where 'data' may be None for methods
-    that do not send a request body.
-    """
-
-    def decorator(func):
-
-        @wraps(func)
-        def wrapper(self, *args, **kwargs):
-
-            url, data = func(self, *args, **kwargs)
-
-            try:
-                response = requests.request(method, url, headers=self.headers, data=data)
-                response.raise_for_status()
-                return response.json()
-            
-            except requests.exceptions.RequestException as error:
-                print(f"API request failed: {error}")
-                return None
-            
-        return wrapper
-    
-    return decorator
 
 
 class StarlingAPI:
@@ -160,6 +122,30 @@ class Application():
 
         self.print_recurring_transfers()
 
+        self.print_waterfall_total()
+
+
+    def calculate_waterfall_total(self):
+        """
+        Calculates the total amount of money available for the waterfall process.
+        This is the sum of all recurring payments.
+        """
+        total_recurring = sum(space.recurringTransfer.currencyAndAmount.minorUnits for space in self.spaces if space.recurringTransfer)
+        return total_recurring
+    
+
+    def print_waterfall_total(self):
+        """
+        Prints the total amount of money available for the waterfall process.
+        """
+        total = self.calculate_waterfall_total()
+        print("=" * 53)
+        print(f"{'Waterfall Total':<40}   {'Amount':>10}")
+        print("-" * 53)
+        print(f"{'Total recurring payments:':<40} £ {total / 100:>10.2f}")
+        print("=" * 53)
+        print()
+
 
     def refresh_spaces(self):
         """
@@ -195,11 +181,11 @@ class Application():
 
 
     def print_balance(self):
-        print("=" * 43)
-        print(f"{'Savings Goals':<30}   {'Balance':>10}")
-        print("-" * 43)
-        print(f"{'Main balance:':<30} £ {self.balance.minorUnits / 100:>10}")
-        print("=" * 43)
+        print("=" * 53)
+        print(f"{'Savings Goals':<40}   {'Balance':>10}")
+        print("-" * 53)
+        print(f"{'Main balance:':<40} £ {self.balance.minorUnits / 100:>10}")
+        print("=" * 53)
         print()
 
 
@@ -214,16 +200,16 @@ class Application():
             print("No savings goals found.")
             return
 
-        print("=" * 43)
-        print(f"{'Savings Goals':<30}   {'Balance':>10}")
-        print("-" * 43)
+        print("=" * 53)
+        print(f"{'Savings Goals':<40}   {'Balance':>10}")
+        print("-" * 53)
 
         for goal in self.spaces:
             name = goal.name if goal.name else "Unnamed Goal"
             balance = goal.totalSaved.minorUnits
-            print(f"{name:<30} £ {balance / 100:>10.2f}")
+            print(f"{name:<40} £ {balance / 100:>10.2f}")
 
-        print("=" * 43)
+        print("=" * 53)
         print()
 
 
@@ -231,7 +217,7 @@ class Application():
         name = transfer_json.get("name", transfer_json["transferUid"])
         amount = transfer_json.get("currencyAndAmount").get("minorUnits")
         next_payment_date = transfer_json.get("nextPaymentDate")
-        print(f"{name:<16} - {next_payment_date} - £ {amount / 100:>10.02f}")
+        print(f"{name:<26} - {next_payment_date} - £ {amount / 100:>10.02f}")
 
 
 
@@ -243,18 +229,19 @@ class Application():
             print("No savings goals found.")
             return
         
-        print("=" * 43)
-        print(f"{'Savings Goals':<30}   {'Next Payment':>13}")
-        print("-" * 43)
+        print("=" * 53)
+        print(f"{'Savings Goals':<40}   {'Next Payment':>13}")
+        print("-" * 53)
 
         for goal in self.spaces:
             if goal.recurringTransfer:
                 next_payment_date = goal.recurringTransfer.recurrenceRule.startDate
-                print(f"{goal.name:<30}   {next_payment_date:>10}")
+                amount = goal.recurringTransfer.currencyAndAmount.minorUnits
+                print(f"{goal.name:<29}{next_payment_date}  £ {amount / 100:>10.02f}")
             else:
-                print(f"{goal.name:<30}   {'No recurring transfer':>10}")
+                print(f"{goal.name:<29}   {'No recurring transfer':>21}")
 
-        print("=" * 43)
+        print("=" * 53)
         print()
 
 
