@@ -1,5 +1,5 @@
 # Standard library imports
-import json, os
+import json, os, uuid
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Optional
@@ -57,7 +57,7 @@ class StarlingAPI:
         
 
     @api_request('PUT')
-    def set_recurring_transfer(self, savings_goal_id, data):
+    def set_recurring_transfer(self, savings_goal_id):
         """
         Sets a recurring transfer for a specified savings goal.
 
@@ -69,6 +69,29 @@ class StarlingAPI:
             dict: The response from the API containing the updated recurring transfer details.
         """
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/recurring-transfer"
+        return url, None
+    
+
+    @api_request('PUT')
+    def add_money_to_savings_goal(self, savings_goal_id, amount):
+        """
+        Adds money to a specified savings goal.
+
+        Args:
+            savings_goal_id (str): The ID of the savings goal.
+            amount (int): The amount to add in minor units.
+
+        Returns:
+            dict: The response from the API containing the updated savings goal details.
+        """
+        transfer_uid = uuid.uuid4()
+        url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/add-money{transfer_uid}"
+        data = {
+            "currencyAndAmount": {
+                "currency": "GBP",
+                "minorUnits": amount
+            }
+        }
         return url, json.dumps(data)
 
 
@@ -155,14 +178,31 @@ class Application():
         print("Starting waterfall process...")
 
         for space in self.spaces:
-            if space.recurringTransfer:
-                transfer_amount = space.recurringTransfer.currencyAndAmount.minorUnits
-                if transfer_amount > 0:
-                    print(f"Distributing £ {transfer_amount / 100:.2f} to {space.name}")
-                    self.api.set_recurring_transfer(space.savingsGoalUid, space.recurringTransfer.model_dump())
-                else:
-                    print(f"No recurring transfer set for {space.name}")
 
+            if space.recurringTransfer:
+                currency_and_amount = space.recurringTransfer.currencyAndAmount
+                
+                if currency_and_amount.minorUnits <= 0:
+                    print(f"No recurring transfer set for {space.name}")
+                    continue
+
+                
+                print(f"Distributing £ {currency_and_amount.minorUnits / 100:.2f} to {space.name}")
+                self.api.add_money_to_savings_goal(space.savingsGoalUid, currency_and_amount)
+                
+                # adjust the next payment date to the first of the next month
+                next_payment_date = space.recurringTransfer.recurrenceRule.startDate
+                # next_payment_date is in the formtt "YYYY-MM-DD"
+                year, month, day = map(int, next_payment_date.split('-'))
+                if month == 12:
+                    year += 1
+                    month = 1
+                else:
+                    month += 1
+                next_payment_date = f"{year:04d}-{month:02d}-01"
+                space.recurringTransfer.recurrenceRule.startDate = next_payment_date 
+                self.api.set_recurring_transfer(space.savingsGoalUid, space.recurringTransfer.model_dump())
+                
         print("Waterfall process completed.")
 
 
