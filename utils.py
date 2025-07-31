@@ -34,6 +34,7 @@ def api_request(method):
             
             except requests.exceptions.RequestException as error:
                 print(f"API request failed: {error}")
+                print(response.text)
                 return None
             
         return wrapper

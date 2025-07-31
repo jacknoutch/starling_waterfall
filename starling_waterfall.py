@@ -57,7 +57,7 @@ class StarlingAPI:
         
 
     @api_request('PUT')
-    def set_recurring_transfer(self, savings_goal_id):
+    def set_recurring_transfer(self, savings_goal_id, data):
         """
         Sets a recurring transfer for a specified savings goal.
 
@@ -69,7 +69,7 @@ class StarlingAPI:
             dict: The response from the API containing the updated recurring transfer details.
         """
         url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/recurring-transfer"
-        return url, None
+        return url, json.dumps(data)
     
 
     @api_request('PUT')
@@ -85,13 +85,14 @@ class StarlingAPI:
             dict: The response from the API containing the updated savings goal details.
         """
         transfer_uid = uuid.uuid4()
-        url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/add-money{transfer_uid}"
+        url = f"{self.BASE_URL}/account/{self.account_uid}/savings-goals/{savings_goal_id}/add-money/{transfer_uid}"
         data = {
-            "currencyAndAmount": {
+            "amount": {
                 "currency": "GBP",
                 "minorUnits": amount
             }
         }
+
         return url, json.dumps(data)
 
 
@@ -188,7 +189,8 @@ class Application():
 
                 
                 print(f"Distributing £ {currency_and_amount.minorUnits / 100:.2f} to {space.name}")
-                self.api.add_money_to_savings_goal(space.savingsGoalUid, currency_and_amount)
+                print(currency_and_amount.minorUnits)
+                self.api.add_money_to_savings_goal(space.savingsGoalUid, currency_and_amount.minorUnits)
                 
                 # adjust the next payment date to the first of the next month
                 next_payment_date = space.recurringTransfer.recurrenceRule.startDate
