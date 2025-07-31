@@ -189,7 +189,6 @@ class Application():
 
                 
                 print(f"Distributing £ {currency_and_amount.minorUnits / 100:.2f} to {space.name}")
-                print(currency_and_amount.minorUnits)
                 self.api.add_money_to_savings_goal(space.savingsGoalUid, currency_and_amount.minorUnits)
                 
                 # adjust the next payment date to the first of the next month
@@ -203,7 +202,13 @@ class Application():
                     month += 1
                 next_payment_date = f"{year:04d}-{month:02d}-01"
                 space.recurringTransfer.recurrenceRule.startDate = next_payment_date 
-                self.api.set_recurring_transfer(space.savingsGoalUid, space.recurringTransfer.model_dump())
+                recurrence_rule = space.recurringTransfer.recurrenceRule.model_dump()
+                amount = space.recurringTransfer.currencyAndAmount.model_dump()
+                data = {
+                    "recurrenceRule": recurrence_rule,
+                    "amount": amount,
+                }
+                self.api.set_recurring_transfer(space.savingsGoalUid, data)
                 
         print("Waterfall process completed.")
 
