@@ -131,7 +131,13 @@ class Application():
 
     def __init__(self, api_token, account_uid):
         self.api = StarlingAPI(api_token, account_uid)
-        self.balance = Amount.model_validate(self.api._get_balance_data()["effectiveBalance"])
+        balance_data = self.api._get_balance_data()
+        if not balance_data:
+            print("Failed to fetch balance data. Check API token and network.")
+            # default to zero balance to allow the app to continue without crashing
+            self.balance = Amount(currency="GBP", minorUnits=0)
+        else:
+            self.balance = Amount.model_validate(balance_data["effectiveBalance"])
         self.spaces = []
 
         self.refresh_spaces()  # Load savings goals on initialization
